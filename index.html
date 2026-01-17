@@ -1,0 +1,2145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>恐龙世界 - 真实版</title>
+  <!-- Tailwind CSS v3 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#2d6a4f',
+            secondary: '#90a955',
+            accent: '#457b9d',
+            danger: '#e63946',
+            dark: '#1d3557',
+            light: '#f1faee'
+          },
+          fontFamily: {
+            sans: ['Arial', 'sans-serif'],
+          },
+          animation: {
+            'bounce-slow': 'bounce 2s infinite',
+            'wiggle': 'wiggle 1s ease-in-out infinite',
+            'float': 'float 3s ease-in-out infinite',
+            'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+          keyframes: {
+            wiggle: {
+              '0%, 100%': { transform: 'rotate(-3deg)' },
+              '50%': { transform: 'rotate(3deg)' },
+            },
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-10px)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .text-shadow {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      }
+      .text-shadow-lg {
+        text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);
+      }
+      .dinosaur-card {
+        @apply bg-dark bg-opacity-80 rounded-2xl shadow-lg overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer border border-gray-700;
+      }
+      .btn-primary {
+        @apply bg-primary text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-green-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50;
+      }
+      .btn-secondary {
+        @apply bg-secondary text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50;
+      }
+      .btn-danger {
+        @apply bg-danger text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-red-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50;
+      }
+      .progress-bar {
+        @apply h-4 bg-gray-700 rounded-full overflow-hidden;
+      }
+      .progress-bar-fill {
+        @apply h-full rounded-full transition-all duration-300;
+      }
+      .game-area {
+        @apply relative w-full h-[calc(100vh-80px)] overflow-hidden;
+      }
+      .dinosaur {
+        @apply absolute transition-all duration-300 transform hover:scale-105 cursor-pointer;
+      }
+      .dinosaur-shadow {
+        @apply absolute bg-black bg-opacity-30 rounded-full transition-all duration-300;
+      }
+      .meat-item {
+        @apply absolute cursor-pointer transition-all duration-300 hover:scale-110 animate-pulse-slow;
+      }
+      .control-hint {
+        @apply absolute bottom-4 left-4 bg-dark bg-opacity-80 text-white p-3 rounded-lg text-sm;
+      }
+      .status-bar {
+        @apply fixed top-0 left-0 right-0 z-50 bg-dark bg-opacity-80 text-white p-2 flex items-center justify-between;
+      }
+      .status-item {
+        @apply flex items-center mr-4;
+      }
+      .attack-type {
+        @apply absolute bottom-4 right-4 bg-dark bg-opacity-80 text-white p-3 rounded-lg;
+      }
+      .attack-option {
+        @apply px-3 py-1 rounded-lg cursor-pointer transition-colors;
+      }
+      .attack-option.active {
+        @apply bg-primary text-white;
+      }
+      .attack-option:not(.active) {
+        @apply hover:bg-gray-700;
+      }
+      .menu-overlay {
+        @apply fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center;
+      }
+      .battle-overlay {
+        @apply z-[100];
+      }
+      .battle-overlay.hidden {
+        @apply pointer-events-none;
+      }
+      .battle-overlay:not(.hidden) {
+        @apply pointer-events-auto;
+      }
+      .battle-overlay button {
+        @apply pointer-events-auto;
+      }
+      .menu-container {
+        @apply bg-dark border border-gray-700 rounded-2xl shadow-xl p-6 max-w-md w-full;
+      }
+      .area-indicator {
+        @apply absolute top-4 left-4 bg-dark bg-opacity-80 text-white px-3 py-1 rounded-full text-sm;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-900 font-sans min-h-screen overflow-hidden">
+  <!-- 游戏容器 -->
+  <div id="game-container" class="relative w-full min-h-screen overflow-hidden">
+    <!-- 加载屏幕 -->
+    <div id="loading-screen" class="absolute inset-0 bg-dark z-50 flex flex-col items-center justify-center">
+      <h1 class="text-4xl md:text-6xl font-bold text-primary mb-8 text-shadow-lg">恐龙世界</h1>
+      <div class="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
+        <div id="loading-bar" class="h-full bg-primary" style="width: 0%"></div>
+      </div>
+      <p id="loading-text" class="mt-4 text-white">加载游戏资源中...</p>
+    </div>
+
+    <!-- 开始屏幕 -->
+    <div id="start-screen" class="hidden absolute inset-0 bg-cover bg-center" style="background-image: url('https://p11-doubao-search-sign.byteimg.com/labis/3db3aef190dde8c04d8c65039429ffae~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164576&x-signature=P%2FN%2BUZXQJxDvPv%2Bt%2Bepaxm0KMtg%3D');">
+      <div class="absolute inset-0 bg-black bg-opacity-60 flex flex-col items-center justify-center">
+        <h1 class="text-5xl md:text-7xl font-bold text-white mb-8 text-shadow-lg animate-float">恐龙世界</h1>
+        <p class="text-xl md:text-2xl text-white mb-12 text-shadow text-center max-w-2xl">在这个真实的恐龙世界中，你将扮演一只恐龙，经历从幼年到老年的完整生命周期，在原始森林中生存、战斗！</p>
+        <button id="start-game-btn" class="btn-primary text-xl">开始游戏</button>
+      </div>
+    </div>
+
+    <!-- 恐龙选择屏幕 -->
+    <div id="dinosaur-selection" class="hidden absolute inset-0 bg-cover bg-center" style="background-image: url('https://p11-doubao-search-sign.byteimg.com/labis/3db3aef190dde8c04d8c65039429ffae~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164576&x-signature=P%2FN%2BUZXQJxDvPv%2Bt%2Bepaxm0KMtg%3D');">
+      <div class="absolute inset-0 bg-black bg-opacity-60 p-4 md:p-8">
+        <div class="max-w-7xl mx-auto">
+          <h2 class="text-4xl md:text-5xl font-bold text-white mb-8 text-shadow-lg text-center">选择你的恐龙</h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- 霸王龙 -->
+            <div class="dinosaur-card p-4" data-dinosaur="t-rex">
+              <div class="flex justify-center mb-4">
+                <img src="https://p3-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/902675741969219788~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=UpPqGbcB3pTP6eCcnoTZJpC%2BwS0%3D" alt="霸王龙" class="w-48 h-48 object-contain animate-float">
+              </div>
+              <h3 class="text-2xl font-bold text-center text-white mb-2">霸王龙</h3>
+              <p class="text-gray-300 text-center mb-4">强大的肉食恐龙，拥有惊人的咬合力和力量</p>
+              
+              <div class="space-y-3">
+                <div>
+                  <div class="flex justify-between text-sm text-gray-300 mb-1">
+                    <span>攻击</span>
+                    <span>9/10</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-bar-fill bg-red-500" style="width: 90%"></div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div class="flex justify-between text-sm text-gray-300 mb-1">
+                    <span>防御</span>
+                    <span>6/10</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-bar-fill bg-yellow-500" style="width: 60%"></div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div class="flex justify-between text-sm text-gray-300 mb-1">
+                    <span>速度</span>
+                    <span>7/10</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-bar-fill bg-blue-500" style="width: 70%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 三角龙 -->
+            <div class="dinosaur-card p-4" data-dinosaur="triceratops">
+              <div class="flex justify-center mb-4">
+                <img src="https://p3-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/56ab595942ac4803a66a613d4355ba1d~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=erNCHY0xBt4axLIh1wBVohJ4esw%3D" alt="三角龙" class="w-48 h-48 object-contain animate-float">
+              </div>
+              <h3 class="text-2xl font-bold text-center text-white mb-2">三角龙</h3>
+              <p class="text-gray-300 text-center mb-4">强壮的草食恐龙，头部有三只角，颈部有骨质盾板</p>
+              
+              <div class="space-y-3">
+                <div>
+                  <div class="flex justify-between text-sm text-gray-300 mb-1">
+                    <span>攻击</span>
+                    <span>7/10</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-bar-fill bg-red-500" style="width: 70%"></div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div class="flex justify-between text-sm text-gray-300 mb-1">
+                    <span>防御</span>
+                    <span>9/10</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-bar-fill bg-yellow-500" style="width: 90%"></div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div class="flex justify-between text-sm text-gray-300 mb-1">
+                    <span>速度</span>
+                    <span>6/10</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-bar-fill bg-blue-500" style="width: 60%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 甲龙 -->
+            <div class="dinosaur-card p-4" data-dinosaur="ankylosaurus">
+              <div class="flex justify-center mb-4">
+                <img src="https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/baf43b80bee247c3922b18e25775eb11~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=xPzBVJGUwbFOV5c1UfC2uTUGCP0%3D" alt="甲龙" class="w-48 h-48 object-contain animate-float">
+              </div>
+              <h3 class="text-2xl font-bold text-center text-white mb-2">甲龙</h3>
+              <p class="text-gray-300 text-center mb-4">全身覆盖骨甲的草食恐龙，尾巴末端有骨锤</p>
+              
+              <div class="space-y-3">
+                <div>
+                  <div class="flex justify-between text-sm text-gray-300 mb-1">
+                    <span>攻击</span>
+                    <span>6/10</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-bar-fill bg-red-500" style="width: 60%"></div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div class="flex justify-between text-sm text-gray-300 mb-1">
+                    <span>防御</span>
+                    <span>10/10</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-bar-fill bg-yellow-500" style="width: 100%"></div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div class="flex justify-between text-sm text-gray-300 mb-1">
+                    <span>速度</span>
+                    <span>4/10</span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-bar-fill bg-blue-500" style="width: 40%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-8 text-center">
+            <button id="confirm-selection" class="btn-primary" disabled>确认选择</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主游戏界面 -->
+    <div id="main-game" class="hidden">
+      <!-- 状态栏 -->
+      <div class="status-bar">
+        <div class="flex items-center">
+          <div class="status-item">
+            <i class="fa fa-heart text-danger mr-2"></i>
+            <span id="player-health">100</span>
+            <span class="text-gray-400 ml-1">/100</span>
+          </div>
+          <div class="status-item">
+            <i class="fa fa-tint text-blue-400 mr-2"></i>
+            <span id="player-water">100</span>
+            <span class="text-gray-400 ml-1">/100</span>
+          </div>
+          <div class="status-item">
+            <i class="fa fa-cutlery text-yellow-400 mr-2"></i>
+            <span id="player-meat">0</span>
+            <span class="text-gray-400 ml-1">/10</span>
+          </div>
+        </div>
+        
+        <div class="flex items-center">
+          <div class="status-item">
+            <i class="fa fa-star text-yellow-400 mr-2"></i>
+            <span id="player-level">1</span>
+          </div>
+          <div class="status-item">
+            <i class="fa fa-clock-o text-gray-400 mr-2"></i>
+            <span id="player-stage">幼年</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 游戏区域 -->
+      <div id="game-area" class="game-area bg-cover bg-center" style="background-image: url('https://p11-doubao-search-sign.byteimg.com/labis/3db3aef190dde8c04d8c65039429ffae~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164576&x-signature=P%2FN%2BUZXQJxDvPv%2Bt%2Bepaxm0KMtg%3D');">
+        <!-- 区域指示器 -->
+        <div class="area-indicator">
+          <i class="fa fa-tree mr-2"></i>
+          <span id="current-area">原始森林</span>
+        </div>
+        
+        <!-- 玩家恐龙 -->
+        <div id="player-dinosaur" class="dinosaur" style="left: 50%; top: 50%; transform: translate(-50%, -50%);">
+          <img id="player-dino-image" src="" alt="玩家恐龙" class="w-32 h-32 object-contain">
+          <div id="player-dino-shadow" class="dinosaur-shadow" style="width: 40px; height: 10px; bottom: -5px; left: 50%; transform: translateX(-50%);"></div>
+        </div>
+        
+        <!-- 敌方恐龙和其他游戏元素将通过JavaScript动态生成 -->
+        
+        <!-- 控制提示 -->
+        <div class="control-hint">
+          <p><span class="font-bold">WASD</span> 或 <span class="font-bold">方向键</span> - 移动</p>
+          <p><span class="font-bold">M</span> - 切换攻击方式</p>
+          <p><span class="font-bold">空格</span> - 攻击/拾取</p>
+          <p><span class="font-bold">B</span> - 打开菜单</p>
+        </div>
+        
+        <!-- 攻击方式选择 -->
+        <div class="attack-type">
+          <div class="text-sm text-gray-400 mb-2">当前攻击方式: <span id="current-attack">撕咬</span></div>
+          <div id="attack-options-container" class="flex flex-col space-y-1">
+            <!-- 攻击方式选项将通过JavaScript动态生成 -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 菜单覆盖层 -->
+    <div id="menu-overlay" class="menu-overlay hidden">
+      <div class="menu-container">
+        <h2 class="text-2xl font-bold text-center mb-6">菜单</h2>
+        
+        <div class="space-y-4">
+          <button id="continue-game" class="btn-primary w-full" onclick="toggleMenu()">继续游戏</button>
+          <button id="change-area" class="btn-secondary w-full">切换区域</button>
+          <button id="view-stats" class="btn-secondary w-full">查看状态</button>
+          <button id="exit-game" class="btn-danger w-full">退出游戏</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 区域选择覆盖层 -->
+    <div id="area-select-overlay" class="menu-overlay hidden">
+      <div class="menu-container">
+        <h2 class="text-2xl font-bold text-center mb-6">选择区域</h2>
+        
+        <div class="space-y-4">
+          <button class="area-option btn-primary w-full" data-area="forest">
+            <div class="flex items-center justify-between">
+              <span>原始森林</span>
+              <i class="fa fa-tree"></i>
+            </div>
+          </button>
+          <button class="area-option btn-secondary w-full" data-area="river">
+            <div class="flex items-center justify-between">
+              <span>河流</span>
+              <i class="fa fa-tint"></i>
+            </div>
+          </button>
+          <button class="area-option btn-secondary w-full" data-area="arena" disabled>
+            <div class="flex items-center justify-between">
+              <span>竞技场 <span class="text-xs text-gray-400">(需要成年)</span></span>
+              <i class="fa fa-trophy"></i>
+            </div>
+          </button>
+          <button id="cancel-area-select" class="bg-gray-700 text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-gray-600 transition-all duration-300 w-full mt-4">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 状态查看覆盖层 -->
+    <div id="stats-overlay" class="menu-overlay hidden">
+      <div class="menu-container">
+        <h2 class="text-2xl font-bold text-center mb-6">恐龙状态</h2>
+        
+        <div class="mb-6">
+          <div class="flex justify-center mb-4">
+            <img id="stats-dino-image" src="" alt="恐龙" class="w-48 h-48 object-contain">
+          </div>
+          <h3 id="stats-dino-name" class="text-xl font-bold text-center mb-1"></h3>
+          <div class="flex justify-center mb-4">
+            <span id="stats-dino-stage" class="bg-primary text-white text-xs px-2 py-1 rounded-full"></span>
+            <span id="stats-dino-level" class="bg-secondary text-white text-xs px-2 py-1 rounded-full ml-2"></span>
+          </div>
+        </div>
+        
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between text-sm text-gray-300 mb-1">
+              <span>生命</span>
+              <span id="stats-health"></span>
+            </div>
+            <div class="progress-bar">
+              <div id="stats-health-bar" class="progress-bar-fill bg-red-500"></div>
+            </div>
+          </div>
+          
+          <div>
+            <div class="flex justify-between text-sm text-gray-300 mb-1">
+              <span>水分</span>
+              <span id="stats-water"></span>
+            </div>
+            <div class="progress-bar">
+              <div id="stats-water-bar" class="progress-bar-fill bg-blue-500"></div>
+            </div>
+          </div>
+          
+          <div>
+            <div class="flex justify-between text-sm text-gray-300 mb-1">
+              <span>肉收集</span>
+              <span id="stats-meat"></span>
+            </div>
+            <div class="progress-bar">
+              <div id="stats-meat-bar" class="progress-bar-fill bg-yellow-500"></div>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4 mt-6">
+            <div>
+              <div class="text-sm text-gray-300 mb-1">攻击</div>
+              <div class="text-lg font-bold" id="stats-attack"></div>
+            </div>
+            <div>
+              <div class="text-sm text-gray-300 mb-1">防御</div>
+              <div class="text-lg font-bold" id="stats-defense"></div>
+            </div>
+            <div>
+              <div class="text-sm text-gray-300 mb-1">速度</div>
+              <div class="text-lg font-bold" id="stats-speed"></div>
+            </div>
+            <div>
+              <div class="text-sm text-gray-300 mb-1">经验</div>
+              <div class="text-lg font-bold" id="stats-experience"></div>
+            </div>
+          </div>
+          
+          <button id="close-stats" class="bg-gray-700 text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-gray-600 transition-all duration-300 w-full mt-6">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 战斗覆盖层 -->
+    <div id="battle-overlay" class="menu-overlay battle-overlay hidden">
+      <div class="menu-container">
+        <div class="flex justify-between items-center mb-6">
+          <div class="text-center">
+            <div class="text-sm text-gray-300 mb-1">你的恐龙</div>
+            <div class="font-bold" id="battle-player-name"></div>
+          </div>
+          <div class="text-2xl font-bold text-white">VS</div>
+          <div class="text-center">
+            <div class="text-sm text-gray-300 mb-1">敌方恐龙</div>
+            <div class="font-bold" id="battle-enemy-name"></div>
+          </div>
+        </div>
+        
+        <div class="flex justify-between items-center mb-6">
+          <div class="w-1/2 pr-2">
+            <div class="flex justify-between text-sm text-gray-300 mb-1">
+              <span>生命</span>
+              <span id="battle-player-health"></span>
+            </div>
+            <div class="progress-bar">
+              <div id="battle-player-health-bar" class="progress-bar-fill bg-red-500"></div>
+            </div>
+          </div>
+          <div class="w-1/2 pl-2">
+            <div class="flex justify-between text-sm text-gray-300 mb-1">
+              <span>生命</span>
+              <span id="battle-enemy-health"></span>
+            </div>
+            <div class="progress-bar">
+              <div id="battle-enemy-health-bar" class="progress-bar-fill bg-red-500"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="battle-log" class="bg-black bg-opacity-50 rounded-lg p-3 h-32 overflow-y-auto mb-6 text-sm">
+          <p class="text-center text-gray-400">战斗开始！</p>
+        </div>
+        
+        <!-- 攻击方式选择 -->
+        <div class="mb-4">
+          <div class="text-sm text-gray-300 mb-2">当前攻击: <span id="battle-current-attack" class="font-bold text-yellow-400">撕咬</span></div>
+          <button id="battle-change-attack" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow-lg hover:bg-blue-500 transition-all duration-300 w-full text-sm">
+            <i class="fa fa-exchange-alt mr-2"></i>切换攻击方式 (M)
+          </button>
+        </div>
+        
+        <div class="space-y-3">
+          <button id="battle-attack" class="btn-primary w-full flex items-center justify-center">
+            <i class="fa fa-crosshairs mr-2"></i>
+            <span id="battle-attack-name">撕咬</span>
+          </button>
+          <button id="battle-flee" class="bg-gray-700 text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-gray-600 transition-all duration-300 w-full">
+            <i class="fa fa-arrow-left mr-2"></i> 逃跑
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 气泡提醒 -->
+    <div id="toast-notification" class="fixed top-1/4 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-dark bg-opacity-90 text-white p-6 rounded-2xl shadow-xl z-50 max-w-md w-full hidden animate-float">
+      <div id="toast-icon" class="text-4xl font-bold mb-3 text-center"></div>
+      <h3 id="toast-title" class="text-2xl font-bold mb-2 text-center"></h3>
+      <p id="toast-message" class="text-gray-300 text-center"></p>
+    </div>
+  </div>
+
+  <!-- 游戏脚本 -->
+  <script>
+    // 游戏数据
+    const gameData = {
+      player: {
+        name: "玩家",
+        dinosaur: null,
+        level: 1,
+        stage: "juvenile", // juvenile(幼年), adolescent(青年), subadult(亚成年), adult(成年), elder(老年)
+        meatCount: 0,
+        water: 100,
+        maxWater: 100,
+        health: 100,
+        maxHealth: 100,
+        experience: 0,
+        currentArea: "forest" // forest(森林), river(河流), arena(竞技场)
+      },
+      gameWorld: {
+        areas: {
+          forest: {
+            name: "原始森林",
+            background: "https://p11-doubao-search-sign.byteimg.com/labis/3db3aef190dde8c04d8c65039429ffae~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164576&x-signature=P%2FN%2BUZXQJxDvPv%2Bt%2Bepaxm0KMtg%3D",
+            enemies: [
+              {
+                id: "small_carnivore",
+                name: "小型食肉恐龙",
+                level: 1,
+                health: 30,
+                maxHealth: 30,
+                attack: 5,
+                defense: 2,
+                speed: 8,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 1
+              },
+              {
+                id: "compy",
+                name: "美颌龙",
+                level: 2,
+                health: 25,
+                maxHealth: 25,
+                attack: 7,
+                defense: 1,
+                speed: 12,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 1,
+                description: "体型小但速度快，成群结队"
+              },
+              {
+                id: "dilophosaurus",
+                name: "双脊龙",
+                level: 3,
+                health: 40,
+                maxHealth: 40,
+                attack: 8,
+                defense: 3,
+                speed: 9,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 2,
+                description: "颈部有皮膜，能喷射毒液"
+              },
+              {
+                id: "raptor",
+                name: "迅猛龙",
+                level: 4,
+                health: 45,
+                maxHealth: 45,
+                attack: 10,
+                defense: 4,
+                speed: 11,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 2,
+                description: "聪明且敏捷，群体狩猎"
+              },
+              {
+                id: "carnotaurus",
+                name: "牛龙",
+                level: 5,
+                health: 60,
+                maxHealth: 60,
+                attack: 12,
+                defense: 6,
+                speed: 10,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 3,
+                description: "头部有角，奔跑速度快"
+              },
+              {
+                id: "pterodactyl",
+                name: "翼龙",
+                level: 3,
+                health: 35,
+                maxHealth: 35,
+                attack: 9,
+                defense: 2,
+                speed: 13,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 2,
+                description: "会飞，从空中攻击"
+              }
+            ],
+            meatSpawnRate: 5000, // 每5秒可能生成一块肉
+            waterDecreaseRate: 1, // 每秒减少1点水分
+            active: true
+          },
+          river: {
+            name: "河流",
+            background: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/1705848043767201821~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164576&x-signature=kN6DZLAaNOnIgMg2ZQfh0NNUcbk%3D",
+            enemies: [
+              {
+                id: "fish_dinosaur",
+                name: "鱼龙",
+                level: 3,
+                health: 35,
+                maxHealth: 35,
+                attack: 8,
+                defense: 3,
+                speed: 10,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 2,
+                description: "水生爬行动物，游泳健将"
+              },
+              {
+                id: "crocodile",
+                name: "远古鳄鱼",
+                level: 4,
+                health: 50,
+                maxHealth: 50,
+                attack: 11,
+                defense: 8,
+                speed: 7,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 3,
+                description: "潜伏在水中的凶猛捕食者"
+              },
+              {
+                id: "giant_frog",
+                name: "巨型青蛙",
+                level: 2,
+                health: 28,
+                maxHealth: 28,
+                attack: 6,
+                defense: 2,
+                speed: 9,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 1,
+                description: "体型巨大的两栖动物"
+              },
+              {
+                id: "plesiosaurus",
+                name: "蛇颈龙",
+                level: 6,
+                health: 70,
+                maxHealth: 70,
+                attack: 13,
+                defense: 10,
+                speed: 8,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 4,
+                description: "长颈水生爬行动物",
+                requirement: {
+                  stage: "adolescent"
+                }
+              }
+            ],
+            waterIncreaseRate: 5, // 每秒增加5点水分
+            active: false
+          },
+          arena: {
+            name: "竞技场",
+            background: "https://p26-doubao-search-sign.byteimg.com/labis/df3132bf2ae119493bc35a1bdf2f79c3~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164576&x-signature=ImS6VMD5ghERtnu%2FTvKlSVEfYlM%3D",
+            enemies: [
+              {
+                id: "triceratops",
+                name: "三角龙",
+                level: 5,
+                health: 80,
+                maxHealth: 80,
+                attack: 12,
+                defense: 15,
+                speed: 6,
+                imageUrl: "https://p3-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/56ab595942ac4803a66a613d4355ba1d~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=erNCHY0xBt4axLIh1wBVohJ4esw%3D",
+                meatReward: 3,
+                description: "三根角，防御力强",
+                requirement: {
+                  stage: "adult"
+                }
+              },
+              {
+                id: "ankylosaurus",
+                name: "甲龙",
+                level: 7,
+                health: 100,
+                maxHealth: 100,
+                attack: 10,
+                defense: 20,
+                speed: 4,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/baf43b80bee247c3922b18e25775eb11~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=xPzBVJGUwbFOV5c1UfC2uTUGCP0%3D",
+                meatReward: 4,
+                description: "装甲厚重，尾锤威力大",
+                requirement: {
+                  stage: "adult"
+                }
+              },
+              {
+                id: "stegosaurus",
+                name: "剑龙",
+                level: 6,
+                health: 70,
+                maxHealth: 70,
+                attack: 14,
+                defense: 12,
+                speed: 5,
+                imageUrl: "https://p3-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/514fe3063b144f5586505092727b5b1f~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=%2BiGpIjKOEHUMyJSE2%2BaU6a5z6rM%3D",
+                meatReward: 3,
+                description: "背上有骨板，尾部有刺",
+                requirement: {
+                  stage: "adult"
+                }
+              },
+              {
+                id: "spinosaurus",
+                name: "棘龙",
+                level: 8,
+                health: 90,
+                maxHealth: 90,
+                attack: 16,
+                defense: 8,
+                speed: 9,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 5,
+                description: "背上长有帆状物，半水生",
+                requirement: {
+                  stage: "subadult"
+                }
+              },
+              {
+                id: "giganotosaurus",
+                name: "南方巨兽龙",
+                level: 9,
+                health: 110,
+                maxHealth: 110,
+                attack: 18,
+                defense: 10,
+                speed: 8,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 6,
+                description: "比霸王龙还大的食肉恐龙",
+                requirement: {
+                  stage: "adult"
+                }
+              },
+              {
+                id: "tyrannosaurus_rex_enemy",
+                name: "野生霸王龙",
+                level: 10,
+                health: 120,
+                maxHealth: 120,
+                attack: 20,
+                defense: 12,
+                speed: 9,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 8,
+                description: "丛林之王，最强大的捕食者",
+                requirement: {
+                  stage: "adult"
+                }
+              },
+              {
+                id: "brachiosaurus",
+                name: "腕龙",
+                level: 8,
+                health: 150,
+                maxHealth: 150,
+                attack: 8,
+                defense: 18,
+                speed: 3,
+                imageUrl: "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/62939ea9d6624b558c0654c9e2d6f6aa~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164563&x-signature=MwtstZUAwkXmb1cntjOFyhVDdhA%3D",
+                meatReward: 7,
+                description: "巨大的植食性恐龙，血量极高",
+                requirement: {
+                  stage: "subadult"
+                }
+              }
+            ],
+            active: false,
+            requirement: {
+              stage: "adult"
+            }
+          }
+        },
+        dinosaurs: {
+          "t-rex": {
+            id: "t-rex",
+            name: "霸王龙",
+            type: "carnivore",
+            baseAttack: 20,
+            baseDefense: 10,
+            baseSpeed: 15,
+            attackTypes: [
+              {id: "bite", name: "撕咬", damage: 1.0, stage: "all"},
+              {id: "headbutt", name: "头撞", damage: 0.8, stage: "all"},
+              {id: "roar", name: "咆哮", damage: 0.5, stage: "all", effect: "fear"}
+            ],
+            evolvedAttacks: {
+              "elder": [
+                {id: "powerful_bite", name: "强力撕咬", damage: 1.5, stage: "elder"},
+                {id: "charge", name: "冲锋", damage: 1.3, stage: "elder"},
+                {id: "terrifying_roar", name: "恐怖咆哮", damage: 0.8, stage: "elder", effect: "fear_and_damage"}
+              ]
+            },
+            stageImages: {
+              "juvenile": "https://p3-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/902675741969219788~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=UpPqGbcB3pTP6eCcnoTZJpC%2BwS0%3D",
+              "adolescent": "https://p3-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/902675741969219788~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=UpPqGbcB3pTP6eCcnoTZJpC%2BwS0%3D",
+              "subadult": "https://p3-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/902675741969219788~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=UpPqGbcB3pTP6eCcnoTZJpC%2BwS0%3D",
+              "adult": "https://p3-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/902675741969219788~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=UpPqGbcB3pTP6eCcnoTZJpC%2BwS0%3D",
+              "elder": "https://p3-doubao-search-sign.byteimg.com/tos-cn-i-be4g95zd3a/902675741969219788~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=UpPqGbcB3pTP6eCcnoTZJpC%2BwS0%3D"
+            },
+            stageMultipliers: {
+              "juvenile": {attack: 0.5, defense: 0.5, speed: 0.8, size: 0.6},
+              "adolescent": {attack: 0.7, defense: 0.7, speed: 0.9, size: 0.8},
+              "subadult": {attack: 0.9, defense: 0.9, speed: 1.0, size: 0.9},
+              "adult": {attack: 1.0, defense: 1.0, speed: 1.0, size: 1.0},
+              "elder": {attack: 1.2, defense: 0.8, speed: 0.7, size: 1.1}
+            },
+            stageRequirements: {
+              "juvenile": 0,
+              "adolescent": 10,
+              "subadult": 30,
+              "adult": 60,
+              "elder": 100
+            },
+            stageNames: {
+              "juvenile": "幼年",
+              "adolescent": "青年",
+              "subadult": "亚成年",
+              "adult": "成年",
+              "elder": "老年"
+            }
+          },
+          "triceratops": {
+            id: "triceratops",
+            name: "三角龙",
+            type: "herbivore",
+            baseAttack: 15,
+            baseDefense: 18,
+            baseSpeed: 10,
+            attackTypes: [
+              {id: "horn_attack", name: "角刺", damage: 1.0, stage: "all"},
+              {id: "headbutt", name: "头撞", damage: 0.9, stage: "all"},
+              {id: "roar", name: "咆哮", damage: 0.4, stage: "all", effect: "fear"}
+            ],
+            evolvedAttacks: {
+              "elder": [
+                {id: "powerful_horn", name: "强力角刺", damage: 1.4, stage: "elder"},
+                {id: "charge", name: "冲锋", damage: 1.2, stage: "elder"},
+                {id: "terrifying_roar", name: "恐怖咆哮", damage: 0.7, stage: "elder", effect: "fear_and_damage"}
+              ]
+            },
+            stageImages: {
+              "juvenile": "https://p3-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/56ab595942ac4803a66a613d4355ba1d~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=erNCHY0xBt4axLIh1wBVohJ4esw%3D",
+              "adolescent": "https://p3-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/56ab595942ac4803a66a613d4355ba1d~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=erNCHY0xBt4axLIh1wBVohJ4esw%3D",
+              "subadult": "https://p3-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/56ab595942ac4803a66a613d4355ba1d~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=erNCHY0xBt4axLIh1wBVohJ4esw%3D",
+              "adult": "https://p3-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/56ab595942ac4803a66a613d4355ba1d~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=erNCHY0xBt4axLIh1wBVohJ4esw%3D",
+              "elder": "https://p3-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/56ab595942ac4803a66a613d4355ba1d~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=erNCHY0xBt4axLIh1wBVohJ4esw%3D"
+            },
+            stageMultipliers: {
+              "juvenile": {attack: 0.5, defense: 0.6, speed: 0.8, size: 0.6},
+              "adolescent": {attack: 0.7, defense: 0.8, speed: 0.9, size: 0.8},
+              "subadult": {attack: 0.9, defense: 0.9, speed: 1.0, size: 0.9},
+              "adult": {attack: 1.0, defense: 1.0, speed: 1.0, size: 1.0},
+              "elder": {attack: 1.1, defense: 1.2, speed: 0.8, size: 1.1}
+            },
+            stageRequirements: {
+              "juvenile": 0,
+              "adolescent": 10,
+              "subadult": 30,
+              "adult": 60,
+              "elder": 100
+            },
+            stageNames: {
+              "juvenile": "幼年",
+              "adolescent": "青年",
+              "subadult": "亚成年",
+              "adult": "成年",
+              "elder": "老年"
+            }
+          },
+          "ankylosaurus": {
+            id: "ankylosaurus",
+            name: "甲龙",
+            type: "herbivore",
+            baseAttack: 10,
+            baseDefense: 25,
+            baseSpeed: 5,
+            attackTypes: [
+              {id: "tail_attack", name: "尾锤", damage: 1.0, stage: "all"},
+              {id: "body_slam", name: "身体撞击", damage: 0.7, stage: "all"},
+              {id: "roar", name: "咆哮", damage: 0.3, stage: "all", effect: "fear"}
+            ],
+            evolvedAttacks: {
+              "elder": [
+                {id: "powerful_tail", name: "强力尾锤", damage: 1.5, stage: "elder"},
+                {id: "earthquake", name: "地震", damage: 1.0, stage: "elder", effect: "area_damage"},
+                {id: "terrifying_roar", name: "恐怖咆哮", damage: 0.6, stage: "elder", effect: "fear_and_damage"}
+              ]
+            },
+            stageImages: {
+              "juvenile": "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/baf43b80bee247c3922b18e25775eb11~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=xPzBVJGUwbFOV5c1UfC2uTUGCP0%3D",
+              "adolescent": "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/baf43b80bee247c3922b18e25775eb11~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=xPzBVJGUwbFOV5c1UfC2uTUGCP0%3D",
+              "subadult": "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/baf43b80bee247c3922b18e25775eb11~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=xPzBVJGUwbFOV5c1UfC2uTUGCP0%3D",
+              "adult": "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/baf43b80bee247c3922b18e25775eb11~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=xPzBVJGUwbFOV5c1UfC2uTUGCP0%3D",
+              "elder": "https://p11-doubao-search-sign.byteimg.com/tos-cn-i-xv4ileqgde/baf43b80bee247c3922b18e25775eb11~tplv-be4g95zd3a-image.jpeg?lk3s=feb11e32&x-expires=1784164550&x-signature=xPzBVJGUwbFOV5c1UfC2uTUGCP0%3D"
+            },
+            stageMultipliers: {
+              "juvenile": {attack: 0.5, defense: 0.7, speed: 0.8, size: 0.6},
+              "adolescent": {attack: 0.7, defense: 0.8, speed: 0.9, size: 0.8},
+              "subadult": {attack: 0.9, defense: 0.9, speed: 1.0, size: 0.9},
+              "adult": {attack: 1.0, defense: 1.0, speed: 1.0, size: 1.0},
+              "elder": {attack: 1.2, defense: 1.3, speed: 0.7, size: 1.1}
+            },
+            stageRequirements: {
+              "juvenile": 0,
+              "adolescent": 10,
+              "subadult": 30,
+              "adult": 60,
+              "elder": 100
+            },
+            stageNames: {
+              "juvenile": "幼年",
+              "adolescent": "青年",
+              "subadult": "亚成年",
+              "adult": "成年",
+              "elder": "老年"
+            }
+          }
+        },
+        currentEnemies: [],
+        droppedMeat: [],
+        keyboardControls: {
+          up: false,
+          down: false,
+          left: false,
+          right: false,
+          attack: false,
+          menu: false,
+          changeAttack: false
+        },
+        gameLoop: null,
+        currentAttackType: "bite",
+        battle: {
+          inProgress: false,
+          currentEnemy: null
+        }
+      }
+    };
+
+    // DOM元素
+    const loadingScreen = document.getElementById('loading-screen');
+    const loadingBar = document.getElementById('loading-bar');
+    const loadingText = document.getElementById('loading-text');
+    const startScreen = document.getElementById('start-screen');
+    const dinosaurSelection = document.getElementById('dinosaur-selection');
+    const mainGame = document.getElementById('main-game');
+    const startGameBtn = document.getElementById('start-game-btn');
+    const confirmSelectionBtn = document.getElementById('confirm-selection');
+    const dinosaurCards = document.querySelectorAll('.dinosaur-card');
+    const gameArea = document.getElementById('game-area');
+    const playerDinosaur = document.getElementById('player-dinosaur');
+    const playerDinoImage = document.getElementById('player-dino-image');
+    const playerDinoShadow = document.getElementById('player-dino-shadow');
+    const playerHealth = document.getElementById('player-health');
+    const playerWater = document.getElementById('player-water');
+    const playerMeat = document.getElementById('player-meat');
+    const playerLevel = document.getElementById('player-level');
+    const playerStage = document.getElementById('player-stage');
+    const currentArea = document.getElementById('current-area');
+    const currentAttack = document.getElementById('current-attack');
+    const attackOptionsContainer = document.getElementById('attack-options-container');
+    const menuOverlay = document.getElementById('menu-overlay');
+    const continueGameBtn = document.getElementById('continue-game');
+    const changeAreaBtn = document.getElementById('change-area');
+    const viewStatsBtn = document.getElementById('view-stats');
+    const exitGameBtn = document.getElementById('exit-game');
+    const areaSelectOverlay = document.getElementById('area-select-overlay');
+    const areaOptions = document.querySelectorAll('.area-option');
+    const cancelAreaSelectBtn = document.getElementById('cancel-area-select');
+    const statsOverlay = document.getElementById('stats-overlay');
+    const statsDinoImage = document.getElementById('stats-dino-image');
+    const statsDinoName = document.getElementById('stats-dino-name');
+    const statsDinoStage = document.getElementById('stats-dino-stage');
+    const statsDinoLevel = document.getElementById('stats-dino-level');
+    const statsHealth = document.getElementById('stats-health');
+    const statsHealthBar = document.getElementById('stats-health-bar');
+    const statsWater = document.getElementById('stats-water');
+    const statsWaterBar = document.getElementById('stats-water-bar');
+    const statsMeat = document.getElementById('stats-meat');
+    const statsMeatBar = document.getElementById('stats-meat-bar');
+    const statsAttack = document.getElementById('stats-attack');
+    const statsDefense = document.getElementById('stats-defense');
+    const statsSpeed = document.getElementById('stats-speed');
+    const statsExperience = document.getElementById('stats-experience');
+    const closeStatsBtn = document.getElementById('close-stats');
+    const battleOverlay = document.getElementById('battle-overlay');
+    const battlePlayerName = document.getElementById('battle-player-name');
+    const battleEnemyName = document.getElementById('battle-enemy-name');
+    const battlePlayerHealth = document.getElementById('battle-player-health');
+    const battlePlayerHealthBar = document.getElementById('battle-player-health-bar');
+    const battleEnemyHealth = document.getElementById('battle-enemy-health');
+    const battleEnemyHealthBar = document.getElementById('battle-enemy-health-bar');
+    const battleLog = document.getElementById('battle-log');
+    const battleAttackBtn = document.getElementById('battle-attack');
+    const battleAttackName = document.getElementById('battle-attack-name');
+    const battleFleeBtn = document.getElementById('battle-flee');
+    
+    // 气泡提醒元素
+    const toastNotification = document.getElementById('toast-notification');
+    const toastIcon = document.getElementById('toast-icon');
+    const toastTitle = document.getElementById('toast-title');
+    const toastMessage = document.getElementById('toast-message');
+
+    // 初始化游戏
+    function initGame() {
+      // 模拟加载过程
+      let progress = 0;
+      const loadingInterval = setInterval(() => {
+        progress += 5;
+        loadingBar.style.width = `${progress}%`;
+        loadingText.textContent = `加载游戏资源中... ${progress}%`;
+        
+        if (progress >= 100) {
+          clearInterval(loadingInterval);
+          setTimeout(() => {
+            loadingScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+          }, 500);
+        }
+      }, 100);
+      
+      // 绑定事件监听器
+      bindEventListeners();
+    }
+
+    // 绑定事件监听器
+    function bindEventListeners() {
+      // 开始游戏按钮
+      startGameBtn.addEventListener('click', () => {
+        startScreen.classList.add('hidden');
+        dinosaurSelection.classList.remove('hidden');
+      });
+      
+      // 恐龙选择卡片
+      dinosaurCards.forEach(card => {
+        card.addEventListener('click', () => {
+          // 移除其他卡片的选中状态
+          dinosaurCards.forEach(c => c.classList.remove('ring-4', 'ring-primary'));
+          // 添加当前卡片的选中状态
+          card.classList.add('ring-4', 'ring-primary');
+          // 启用确认按钮
+          confirmSelectionBtn.disabled = false;
+        });
+      });
+      
+      // 确认选择按钮
+      confirmSelectionBtn.addEventListener('click', () => {
+        // 获取选中的恐龙
+        const selectedCard = document.querySelector('.dinosaur-card.ring-4');
+        if (selectedCard) {
+          const dinosaurId = selectedCard.dataset.dinosaur;
+          const dinosaur = gameData.gameWorld.dinosaurs[dinosaurId];
+          
+          // 设置玩家恐龙
+          gameData.player.dinosaur = dinosaur;
+          
+          // 生成攻击方式选项
+          generateAttackOptions();
+          
+          // 设置初始攻击方式
+          gameData.gameWorld.currentAttackType = dinosaur.attackTypes[0].id;
+          
+          // 隐藏选择屏幕，显示主游戏界面
+          dinosaurSelection.classList.add('hidden');
+          mainGame.classList.remove('hidden');
+          
+          // 初始化游戏
+          startGame();
+        }
+      });
+      
+      // 键盘控制
+      window.addEventListener('keydown', (e) => {
+        switch(e.key.toLowerCase()) {
+          case 'w':
+          case 'arrowup':
+            gameData.gameWorld.keyboardControls.up = true;
+            break;
+          case 's':
+          case 'arrowdown':
+            gameData.gameWorld.keyboardControls.down = true;
+            break;
+          case 'a':
+          case 'arrowleft':
+            gameData.gameWorld.keyboardControls.left = true;
+            break;
+          case 'd':
+          case 'arrowright':
+            gameData.gameWorld.keyboardControls.right = true;
+            break;
+          case ' ':
+            gameData.gameWorld.keyboardControls.attack = true;
+            break;
+          case 'b':
+            if (!gameData.gameWorld.keyboardControls.menu) {
+              gameData.gameWorld.keyboardControls.menu = true;
+              toggleMenu();
+            }
+            break;
+          case 'm':
+            if (!gameData.gameWorld.keyboardControls.changeAttack) {
+              gameData.gameWorld.keyboardControls.changeAttack = true;
+              changeAttackType();
+            }
+            break;
+        }
+      });
+      
+      window.addEventListener('keyup', (e) => {
+        switch(e.key.toLowerCase()) {
+          case 'w':
+          case 'arrowup':
+            gameData.gameWorld.keyboardControls.up = false;
+            break;
+          case 's':
+          case 'arrowdown':
+            gameData.gameWorld.keyboardControls.down = false;
+            break;
+          case 'a':
+          case 'arrowleft':
+            gameData.gameWorld.keyboardControls.left = false;
+            break;
+          case 'd':
+          case 'arrowright':
+            gameData.gameWorld.keyboardControls.right = false;
+            break;
+          case ' ':
+            gameData.gameWorld.keyboardControls.attack = false;
+            break;
+          case 'b':
+            gameData.gameWorld.keyboardControls.menu = false;
+            break;
+          case 'm':
+            gameData.gameWorld.keyboardControls.changeAttack = false;
+            break;
+        }
+      });
+      
+      // 攻击方式选择
+      attackOptionsContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('attack-option')) {
+          const attackType = e.target.dataset.attack;
+          setAttackType(attackType);
+        }
+      });
+      
+      // 菜单按钮
+      continueGameBtn.addEventListener('click', () => {
+        console.log('continueGameBtn clicked');
+        toggleMenu();
+      });
+      
+      changeAreaBtn.addEventListener('click', () => {
+        menuOverlay.classList.add('hidden');
+        showAreaSelect();
+      });
+      
+      viewStatsBtn.addEventListener('click', () => {
+        menuOverlay.classList.add('hidden');
+        showStats();
+      });
+      
+      exitGameBtn.addEventListener('click', () => {
+        if (confirm('确定要退出游戏吗？所有进度将会丢失！')) {
+          location.reload();
+        }
+      });
+      
+      // 区域选择按钮
+      areaOptions.forEach(option => {
+        option.addEventListener('click', () => {
+          const areaId = option.dataset.area;
+          if (!option.disabled) {
+            changeArea(areaId);
+          }
+        });
+      });
+      
+      cancelAreaSelectBtn.addEventListener('click', () => {
+        areaSelectOverlay.classList.add('hidden');
+      });
+      
+      // 状态查看按钮
+      closeStatsBtn.addEventListener('click', () => {
+        statsOverlay.classList.add('hidden');
+      });
+      
+      // 战斗按钮
+      battleAttackBtn.addEventListener('click', () => {
+        if (gameData.gameWorld.battle.inProgress) {
+          playerAttack();
+        }
+      });
+      
+      battleFleeBtn.addEventListener('click', () => {
+        if (gameData.gameWorld.battle.inProgress) {
+          fleeBattle();
+        }
+      });
+      
+      // 战斗中切换攻击方式
+      const battleChangeAttackBtn = document.getElementById('battle-change-attack');
+      battleChangeAttackBtn.addEventListener('click', () => {
+        if (gameData.gameWorld.battle.inProgress) {
+          changeAttackType();
+        }
+      });
+      
+      // 添加气泡提醒样式
+      toastNotification.style.zIndex = '2147483647';
+    }
+
+    // 显示气泡提醒
+    function showToast(icon, title, message, duration = 3000) {
+      toastIcon.innerHTML = icon;
+      toastTitle.textContent = title;
+      toastMessage.textContent = message;
+      
+      toastNotification.classList.remove('hidden');
+      
+      // 自动隐藏
+      setTimeout(() => {
+        toastNotification.classList.add('hidden');
+      }, duration);
+    }
+    
+    // 开始游戏
+    function startGame() {
+      // 隐藏所有覆盖层
+      areaSelectOverlay.classList.add('hidden');
+      statsOverlay.classList.add('hidden');
+      battleOverlay.classList.add('hidden');
+      menuOverlay.classList.add('hidden');
+      
+      // 设置玩家恐龙图像
+      updateDinosaurImage();
+      
+      // 更新UI
+      updateUI();
+      
+      // 开始游戏循环
+      gameData.gameWorld.gameLoop = setInterval(gameLoop, 100);
+      
+      // 开始生成肉
+      startMeatGeneration();
+      
+      // 开始生成敌人
+      startEnemyGeneration();
+    }
+
+    // 游戏主循环
+    function gameLoop() {
+      // 处理移动
+      handleMovement();
+      
+      // 处理攻击
+      if (gameData.gameWorld.keyboardControls.attack) {
+        handleAttack();
+      }
+      
+      // 处理资源变化
+      handleResourceChanges();
+      
+      // 检测碰撞
+      checkCollisions();
+      
+      // 更新UI
+      updateUI();
+    }
+
+    // 处理移动
+    function handleMovement() {
+      if (gameData.gameWorld.battle.inProgress) return;
+      
+      const speed = getCurrentSpeed();
+      const moveDistance = speed * 0.5;
+      
+      let newLeft = parseInt(playerDinosaur.style.left) || 50;
+      let newTop = parseInt(playerDinosaur.style.top) || 50;
+      
+      if (gameData.gameWorld.keyboardControls.up) {
+        newTop = Math.max(5, newTop - moveDistance);
+      }
+      if (gameData.gameWorld.keyboardControls.down) {
+        newTop = Math.min(95, newTop + moveDistance);
+      }
+      if (gameData.gameWorld.keyboardControls.left) {
+        newLeft = Math.max(5, newLeft - moveDistance);
+        playerDinosaur.style.transform = 'translateX(-50%) scaleX(-1)';
+      }
+      if (gameData.gameWorld.keyboardControls.right) {
+        newLeft = Math.min(95, newLeft + moveDistance);
+        playerDinosaur.style.transform = 'translateX(-50%) scaleX(1)';
+      }
+      
+      playerDinosaur.style.left = `${newLeft}%`;
+      playerDinosaur.style.top = `${newTop}%`;
+    }
+
+    // 处理攻击
+    function handleAttack() {
+      if (gameData.gameWorld.battle.inProgress) return;
+      
+      // 检查是否有敌人在攻击范围内
+      const enemy = getEnemyInRange();
+      if (enemy) {
+        startBattle(enemy);
+      }
+      
+      // 重置攻击控制
+      gameData.gameWorld.keyboardControls.attack = false;
+    }
+
+    // 处理资源变化
+    function handleResourceChanges() {
+      const currentArea = gameData.gameWorld.areas[gameData.player.currentArea];
+      
+      if (currentArea === gameData.gameWorld.areas.forest) {
+        // 在森林中，水分减少
+        gameData.player.water = Math.max(0, gameData.player.water - currentArea.waterDecreaseRate * 0.1);
+        
+        // 如果水分为0，生命值减少
+        if (gameData.player.water === 0) {
+          gameData.player.health = Math.max(0, gameData.player.health - 0.5);
+        }
+      } else if (currentArea === gameData.gameWorld.areas.river) {
+        // 在河流中，水分增加
+        gameData.player.water = Math.min(gameData.player.maxWater, gameData.player.water + currentArea.waterIncreaseRate * 0.1);
+      }
+      
+      // 如果生命值为0，游戏结束
+      if (gameData.player.health === 0) {
+        gameOver();
+      }
+    }
+
+    // 检测碰撞
+    function checkCollisions() {
+      // 检查是否与肉碰撞
+      checkMeatCollision();
+      
+      // 检查是否与敌人碰撞
+      checkEnemyCollision();
+    }
+
+    // 检查与肉的碰撞
+    function checkMeatCollision() {
+      const playerLeft = parseInt(playerDinosaur.style.left) || 50;
+      const playerTop = parseInt(playerDinosaur.style.top) || 50;
+      
+      gameData.gameWorld.droppedMeat.forEach((meat, index) => {
+        const distance = Math.sqrt(Math.pow(playerLeft - meat.x, 2) + Math.pow(playerTop - meat.y, 2));
+        
+        if (distance < 10) {
+          // 拾取肉
+          gameData.player.meatCount++;
+          
+          // 检查是否升级
+          if (gameData.player.meatCount >= 10) {
+            levelUp();
+          }
+          
+          // 移除肉
+          const meatElement = document.getElementById(`meat-${index}`);
+          if (meatElement) {
+            meatElement.remove();
+          }
+          
+          gameData.gameWorld.droppedMeat.splice(index, 1);
+        }
+      });
+    }
+
+    // 检查与敌人的碰撞
+    function checkEnemyCollision() {
+      if (gameData.gameWorld.battle.inProgress) return;
+      
+      const playerLeft = parseInt(playerDinosaur.style.left) || 50;
+      const playerTop = parseInt(playerDinosaur.style.top) || 50;
+      
+      gameData.gameWorld.currentEnemies.forEach(enemy => {
+        const distance = Math.sqrt(Math.pow(playerLeft - enemy.x, 2) + Math.pow(playerTop - enemy.y, 2));
+        
+        if (distance < 10) {
+          // 开始战斗
+          startBattle(enemy);
+        }
+      });
+    }
+
+    // 更新UI
+    function updateUI() {
+      // 更新状态栏
+      playerHealth.textContent = Math.floor(gameData.player.health);
+      playerWater.textContent = Math.floor(gameData.player.water);
+      playerMeat.textContent = gameData.player.meatCount;
+      playerLevel.textContent = gameData.player.level;
+      playerStage.textContent = gameData.player.dinosaur.stageNames[gameData.player.stage];
+      
+      // 更新当前区域
+      currentArea.textContent = gameData.gameWorld.areas[gameData.player.currentArea].name;
+      
+      // 更新当前攻击方式
+      const attackType = gameData.player.dinosaur.attackTypes.find(attack => attack.id === gameData.gameWorld.currentAttackType);
+      currentAttack.textContent = attackType ? attackType.name : "撕咬";
+      
+      // 更新攻击方式选项
+      const attackOptions = attackOptionsContainer.querySelectorAll('.attack-option');
+      attackOptions.forEach(option => {
+        if (option.dataset.attack === gameData.gameWorld.currentAttackType) {
+          option.classList.add('active');
+        } else {
+          option.classList.remove('active');
+        }
+      });
+    }
+
+    // 生成攻击方式选项
+    function generateAttackOptions() {
+      const dinosaur = gameData.player.dinosaur;
+      const attackTypes = dinosaur.attackTypes;
+      
+      // 清空现有选项
+      attackOptionsContainer.innerHTML = '';
+      
+      // 为每个攻击类型创建选项
+      attackTypes.forEach((attack, index) => {
+        const option = document.createElement('div');
+        option.className = 'attack-option';
+        option.dataset.attack = attack.id;
+        option.textContent = attack.name;
+        
+        // 第一个攻击类型默认激活
+        if (index === 0) {
+          option.classList.add('active');
+        }
+        
+        attackOptionsContainer.appendChild(option);
+      });
+    }
+
+    // 更新恐龙图像
+    function updateDinosaurImage() {
+      const stage = gameData.player.stage;
+      const dinosaur = gameData.player.dinosaur;
+      
+      // 设置图像
+      playerDinoImage.src = dinosaur.stageImages[stage];
+      
+      // 设置大小 (使用更大的基础尺寸)
+      const size = dinosaur.stageMultipliers[stage].size;
+      playerDinoImage.style.width = `${128 * size}px`;
+      playerDinoImage.style.height = `${128 * size}px`;
+      
+      // 设置阴影大小
+      playerDinoShadow.style.width = `${80 * size}px`;
+      playerDinoShadow.style.height = `${20 * size}px`;
+    }
+
+    // 获取当前速度
+    function getCurrentSpeed() {
+      const dinosaur = gameData.player.dinosaur;
+      const stage = gameData.player.stage;
+      const baseSpeed = dinosaur.baseSpeed;
+      const stageMultiplier = dinosaur.stageMultipliers[stage].speed;
+      
+      return baseSpeed * stageMultiplier;
+    }
+
+    // 获取当前攻击力
+    function getCurrentAttack() {
+      const dinosaur = gameData.player.dinosaur;
+      const stage = gameData.player.stage;
+      const baseAttack = dinosaur.baseAttack;
+      const stageMultiplier = dinosaur.stageMultipliers[stage].attack;
+      
+      return baseAttack * stageMultiplier;
+    }
+
+    // 获取当前防御力
+    function getCurrentDefense() {
+      const dinosaur = gameData.player.dinosaur;
+      const stage = gameData.player.stage;
+      const baseDefense = dinosaur.baseDefense;
+      const stageMultiplier = dinosaur.stageMultipliers[stage].defense;
+      
+      return baseDefense * stageMultiplier;
+    }
+
+    // 开始生成肉
+    function startMeatGeneration() {
+      setInterval(() => {
+        if (gameData.player.currentArea === "forest" && !gameData.gameWorld.battle.inProgress) {
+          generateMeat();
+        }
+      }, 5000);
+    }
+
+    // 生成肉
+    function generateMeat() {
+      // 随机位置
+      const x = 10 + Math.random() * 80;
+      const y = 10 + Math.random() * 80;
+      
+      // 添加到肉列表
+      const meatId = gameData.gameWorld.droppedMeat.length;
+      gameData.gameWorld.droppedMeat.push({
+        id: meatId,
+        x: x,
+        y: y,
+        amount: 1
+      });
+      
+      // 创建肉元素
+      const meatElement = document.createElement('div');
+      meatElement.id = `meat-${meatId}`;
+      meatElement.className = 'meat-item';
+      meatElement.style.left = `${x}%`;
+      meatElement.style.top = `${y}%`;
+      meatElement.style.transform = 'translate(-50%, -50%)';
+      
+      meatElement.innerHTML = `
+        <img src="https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/rc/pc/super_tool/b856003528294271bb8e98835ca13261~tplv-a9rns2rl98-image.image?lk3s=8e244e95&rcl=20260117091454C3A37A629340091C334D&rrcfp=f06b921b&x-expires=1771204608&x-signature=zZLltjGPwaCsYZeecXTOAdZltD4%3D" alt="肉" class="w-12 h-12 object-contain">
+      `;
+      
+      // 添加到游戏区域
+      gameArea.appendChild(meatElement);
+      
+      // 5秒后消失
+      setTimeout(() => {
+        const element = document.getElementById(`meat-${meatId}`);
+        if (element) {
+          element.remove();
+          
+          // 从列表中移除
+          const index = gameData.gameWorld.droppedMeat.findIndex(meat => meat.id === meatId);
+          if (index !== -1) {
+            gameData.gameWorld.droppedMeat.splice(index, 1);
+          }
+        }
+      }, 10000);
+    }
+
+    // 开始生成敌人
+    function startEnemyGeneration() {
+      setInterval(() => {
+        if (gameData.player.currentArea === "forest" && !gameData.gameWorld.battle.inProgress) {
+          generateEnemy();
+        }
+      }, 10000);
+    }
+
+    // 生成敌人
+    function generateEnemy() {
+      const area = gameData.gameWorld.areas[gameData.player.currentArea];
+      if (!area.enemies || area.enemies.length === 0) return;
+      
+      // 随机选择一个敌人
+      const enemyTemplate = area.enemies[Math.floor(Math.random() * area.enemies.length)];
+      
+      // 检查是否满足生成条件
+      if (enemyTemplate.requirement) {
+        if (enemyTemplate.requirement.stage && enemyTemplate.requirement.stage !== gameData.player.stage) {
+          return;
+        }
+        if (enemyTemplate.requirement.level && enemyTemplate.requirement.level > gameData.player.level) {
+          return;
+        }
+      }
+      
+      // 随机位置（远离玩家）
+      let x, y;
+      const playerX = parseInt(playerDinosaur.style.left) || 50;
+      const playerY = parseInt(playerDinosaur.style.top) || 50;
+      
+      do {
+        x = 10 + Math.random() * 80;
+        y = 10 + Math.random() * 80;
+      } while (Math.sqrt(Math.pow(playerX - x, 2) + Math.pow(playerY - y, 2)) < 30);
+      
+      // 创建敌人对象
+      const enemy = {
+        id: `enemy-${Date.now()}`,
+        template: enemyTemplate,
+        x: x,
+        y: y,
+        health: enemyTemplate.health,
+        maxHealth: enemyTemplate.maxHealth,
+        attack: enemyTemplate.attack,
+        defense: enemyTemplate.defense,
+        speed: enemyTemplate.speed,
+        meatReward: enemyTemplate.meatReward
+      };
+      
+      // 添加到敌人列表
+      gameData.gameWorld.currentEnemies.push(enemy);
+      
+      // 创建敌人元素
+      const enemyElement = document.createElement('div');
+      enemyElement.id = enemy.id;
+      enemyElement.className = 'dinosaur';
+      enemyElement.style.left = `${x}%`;
+      enemyElement.style.top = `${y}%`;
+      enemyElement.style.transform = 'translate(-50%, -50%)';
+      
+      enemyElement.innerHTML = `
+        <img src="${enemyTemplate.imageUrl}" alt="${enemyTemplate.name}" class="w-32 h-32 object-contain">
+        <div class="dinosaur-shadow" style="width: 40px; height: 10px; bottom: -5px; left: 50%; transform: translateX(-50%);"></div>
+      `;
+      
+      // 添加到游戏区域
+      gameArea.appendChild(enemyElement);
+      
+      // 开始敌人AI
+      startEnemyAI(enemy);
+    }
+
+    // 敌人AI
+    function startEnemyAI(enemy) {
+      const aiInterval = setInterval(() => {
+        // 检查敌人是否还存在
+        const enemyElement = document.getElementById(enemy.id);
+        if (!enemyElement || gameData.gameWorld.battle.inProgress) {
+          clearInterval(aiInterval);
+          return;
+        }
+        
+        // 获取玩家位置
+        const playerX = parseInt(playerDinosaur.style.left) || 50;
+        const playerY = parseInt(playerDinosaur.style.top) || 50;
+        
+        // 计算距离
+        const distance = Math.sqrt(Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2));
+        
+        // 如果距离小于30，向玩家移动
+        if (distance < 30) {
+          const moveX = (playerX - enemy.x) / distance;
+          const moveY = (playerY - enemy.y) / distance;
+          
+          enemy.x += moveX * enemy.speed * 0.1;
+          enemy.y += moveY * enemy.speed * 0.1;
+          
+          // 更新位置
+          enemyElement.style.left = `${enemy.x}%`;
+          enemyElement.style.top = `${enemy.y}%`;
+          
+          // 如果距离小于10，开始战斗
+          if (distance < 10) {
+            clearInterval(aiInterval);
+            startBattle(enemy);
+          }
+        } else {
+          // 随机移动
+          enemy.x += (Math.random() - 0.5) * enemy.speed * 0.1;
+          enemy.y += (Math.random() - 0.5) * enemy.speed * 0.1;
+          
+          // 限制在游戏区域内
+          enemy.x = Math.max(5, Math.min(95, enemy.x));
+          enemy.y = Math.max(5, Math.min(95, enemy.y));
+          
+          // 更新位置
+          enemyElement.style.left = `${enemy.x}%`;
+          enemyElement.style.top = `${enemy.y}%`;
+        }
+      }, 100);
+    }
+
+    // 获取攻击范围内的敌人
+    function getEnemyInRange() {
+      const playerX = parseInt(playerDinosaur.style.left) || 50;
+      const playerY = parseInt(playerDinosaur.style.top) || 50;
+      
+      for (const enemy of gameData.gameWorld.currentEnemies) {
+        const distance = Math.sqrt(Math.pow(playerX - enemy.x, 2) + Math.pow(playerY - enemy.y, 2));
+        if (distance < 15) {
+          return enemy;
+        }
+      }
+      
+      return null;
+    }
+
+    // 开始战斗
+    function startBattle(enemy) {
+      // 设置战斗数据
+      gameData.gameWorld.battle.inProgress = true;
+      gameData.gameWorld.battle.currentEnemy = enemy;
+      
+      // 更新战斗UI
+      updateBattleUI();
+      
+      // 显示战斗覆盖层
+      battleOverlay.classList.remove('hidden');
+      
+      // 添加战斗日志
+      addBattleLog(`战斗开始！你的${gameData.player.dinosaur.name} VS ${enemy.template.name}`);
+    }
+
+    // 更新战斗UI
+    function updateBattleUI() {
+      const enemy = gameData.gameWorld.battle.currentEnemy;
+      
+      // 更新名称
+      battlePlayerName.textContent = gameData.player.dinosaur.name;
+      battleEnemyName.textContent = enemy.template.name;
+      
+      // 更新生命值
+      battlePlayerHealth.textContent = `${Math.floor(gameData.player.health)}/${gameData.player.maxHealth}`;
+      battlePlayerHealthBar.style.width = `${(gameData.player.health / gameData.player.maxHealth) * 100}%`;
+      
+      battleEnemyHealth.textContent = `${Math.floor(enemy.health)}/${enemy.maxHealth}`;
+      battleEnemyHealthBar.style.width = `${(enemy.health / enemy.maxHealth) * 100}%`;
+      
+      // 更新攻击方式显示
+      const attackType = gameData.player.dinosaur.attackTypes.find(attack => attack.id === gameData.gameWorld.currentAttackType);
+      const attackName = attackType ? attackType.name : "撕咬";
+      battleAttackName.textContent = attackName;
+      
+      // 更新战斗中的当前攻击方式显示
+      const battleCurrentAttack = document.getElementById('battle-current-attack');
+      if (battleCurrentAttack) {
+        battleCurrentAttack.textContent = attackName;
+      }
+    }
+
+    // 添加战斗日志
+    function addBattleLog(message) {
+      const logEntry = document.createElement('p');
+      logEntry.textContent = message;
+      battleLog.appendChild(logEntry);
+      
+      // 滚动到底部
+      battleLog.scrollTop = battleLog.scrollHeight;
+    }
+
+    // 玩家攻击
+    function playerAttack() {
+      const enemy = gameData.gameWorld.battle.currentEnemy;
+      
+      // 获取当前攻击方式
+      const attackType = gameData.player.dinosaur.attackTypes.find(attack => attack.id === gameData.gameWorld.currentAttackType);
+      
+      // 计算伤害
+      let damage = getCurrentAttack() * (attackType ? attackType.damage : 1.0);
+      damage = Math.max(1, damage - enemy.defense * 0.5);
+      damage = Math.floor(damage);
+      
+      // 应用伤害
+      enemy.health = Math.max(0, enemy.health - damage);
+      
+      // 添加战斗日志
+      addBattleLog(`你的${gameData.player.dinosaur.name}使用了${attackType ? attackType.name : "撕咬"}，对${enemy.template.name}造成了${damage}点伤害！`);
+      
+      // 更新UI
+      updateBattleUI();
+      
+      // 检查敌人是否战败
+      if (enemy.health <= 0) {
+        endBattle(true);
+        return;
+      }
+      
+      // 敌人反击
+      setTimeout(() => {
+        enemyAttack();
+      }, 1000);
+    }
+
+    // 敌人攻击
+    function enemyAttack() {
+      const enemy = gameData.gameWorld.battle.currentEnemy;
+      
+      // 计算伤害
+      let damage = enemy.attack;
+      damage = Math.max(1, damage - getCurrentDefense() * 0.5);
+      damage = Math.floor(damage);
+      
+      // 应用伤害
+      gameData.player.health = Math.max(0, gameData.player.health - damage);
+      
+      // 添加战斗日志
+      addBattleLog(`${enemy.template.name}攻击了你的${gameData.player.dinosaur.name}，造成了${damage}点伤害！`);
+      
+      // 更新UI
+      updateBattleUI();
+      
+      // 检查玩家是否战败
+      if (gameData.player.health <= 0) {
+        endBattle(false);
+      }
+    }
+
+    // 结束战斗
+    function endBattle(victory) {
+      const enemy = gameData.gameWorld.battle.currentEnemy;
+      
+      if (victory) {
+        // 胜利
+        addBattleLog(`你击败了${enemy.template.name}！`);
+        
+        // 获得肉
+        if (enemy.meatReward) {
+          gameData.player.meatCount += enemy.meatReward;
+          addBattleLog(`获得了${enemy.meatReward}块肉！`);
+          
+          // 检查是否升级
+          if (gameData.player.meatCount >= 10) {
+            levelUp();
+          }
+        }
+        
+        // 移除敌人
+        removeEnemy(enemy);
+      } else {
+        // 失败
+        addBattleLog(`你的${gameData.player.dinosaur.name}被击败了！`);
+        
+        // 移除敌人
+        removeEnemy(enemy);
+        
+        // 如果生命值为0，游戏结束
+        if (gameData.player.health <= 0) {
+          gameOver();
+        }
+      }
+      
+      // 关闭战斗覆盖层
+      setTimeout(() => {
+        battleOverlay.classList.add('hidden');
+        gameData.gameWorld.battle.inProgress = false;
+        gameData.gameWorld.battle.currentEnemy = null;
+      }, 2000);
+    }
+
+    // 逃跑
+    function fleeBattle() {
+      // 50%的概率逃跑成功
+      if (Math.random() > 0.5) {
+        addBattleLog('你成功逃离了战斗！');
+        
+        // 关闭战斗覆盖层
+        setTimeout(() => {
+          battleOverlay.classList.add('hidden');
+          gameData.gameWorld.battle.inProgress = false;
+          gameData.gameWorld.battle.currentEnemy = null;
+        }, 1000);
+      } else {
+        addBattleLog('逃跑失败！');
+        
+        // 敌人攻击
+        setTimeout(() => {
+          enemyAttack();
+        }, 1000);
+      }
+    }
+
+    // 移除敌人
+    function removeEnemy(enemy) {
+      // 移除元素
+      const enemyElement = document.getElementById(enemy.id);
+      if (enemyElement) {
+        enemyElement.remove();
+      }
+      
+      // 从列表中移除
+      const index = gameData.gameWorld.currentEnemies.findIndex(e => e.id === enemy.id);
+      if (index !== -1) {
+        gameData.gameWorld.currentEnemies.splice(index, 1);
+      }
+    }
+
+    // 升级
+    function levelUp() {
+      // 增加等级
+      gameData.player.level++;
+      
+      // 重置肉计数
+      gameData.player.meatCount = 0;
+      
+      // 增加属性
+      gameData.player.maxHealth += 10;
+      gameData.player.health = gameData.player.maxHealth;
+      gameData.player.maxWater += 5;
+      gameData.player.water = gameData.player.maxWater;
+      
+      // 显示升级气泡提醒
+      showToast('<i class="fa fa-star text-yellow-400"></i>', '升级了！', `你现在是 ${gameData.player.level} 级了！收集更多的肉来继续成长！`);
+      
+      // 检查是否升级阶段
+      checkStageUpgrade();
+    }
+
+    // 检查阶段升级
+    function checkStageUpgrade() {
+      const dinosaur = gameData.player.dinosaur;
+      const currentStage = gameData.player.stage;
+      const stageRequirements = dinosaur.stageRequirements;
+      
+      // 检查是否满足下一阶段的要求
+      for (const stage in stageRequirements) {
+        if (stage !== currentStage && gameData.player.level >= stageRequirements[stage]) {
+          // 升级阶段
+          gameData.player.stage = stage;
+          
+          // 更新恐龙图像
+          updateDinosaurImage();
+          
+          // 显示阶段变化气泡提醒
+          showToast('<i class="fa fa-arrow-up text-primary"></i>', '成长了！', `你现在是 ${dinosaur.stageNames[stage]} 了！你的恐龙变得更加强壮，解锁了新的能力！`);
+          
+          // 更新区域解锁状态
+          updateAreaAvailability();
+          
+          break;
+        }
+      }
+    }
+
+    // 更新区域可用性
+    function updateAreaAvailability() {
+      // 检查竞技场是否可用
+      const arenaOption = document.querySelector('.area-option[data-area="arena"]');
+      if (arenaOption) {
+        if (gameData.player.stage === "adult") {
+          arenaOption.disabled = false;
+          arenaOption.classList.remove('bg-gray-700', 'cursor-not-allowed');
+          arenaOption.classList.add('btn-secondary');
+        }
+      }
+    }
+
+    // 切换菜单
+    function toggleMenu() {
+      // 确保其他覆盖层都被隐藏
+      areaSelectOverlay.classList.add('hidden');
+      statsOverlay.classList.add('hidden');
+      battleOverlay.classList.add('hidden');
+      
+      // 切换菜单显示/隐藏
+      menuOverlay.classList.toggle('hidden');
+      
+      // 确保键盘控制被重置
+      gameData.gameWorld.keyboardControls.menu = false;
+    }
+
+    // 显示区域选择
+    function showAreaSelect() {
+      // 隐藏菜单
+      menuOverlay.classList.add('hidden');
+      // 显示区域选择
+      areaSelectOverlay.classList.remove('hidden');
+    }
+
+    // 显示状态
+    function showStats() {
+      const dinosaur = gameData.player.dinosaur;
+      
+      // 设置图像
+      statsDinoImage.src = dinosaur.stageImages[gameData.player.stage];
+      
+      // 设置名称和阶段
+      statsDinoName.textContent = dinosaur.name;
+      statsDinoStage.textContent = dinosaur.stageNames[gameData.player.stage];
+      statsDinoLevel.textContent = `等级 ${gameData.player.level}`;
+      
+      // 设置状态条
+      statsHealth.textContent = `${Math.floor(gameData.player.health)}/${gameData.player.maxHealth}`;
+      statsHealthBar.style.width = `${(gameData.player.health / gameData.player.maxHealth) * 100}%`;
+      
+      statsWater.textContent = `${Math.floor(gameData.player.water)}/${gameData.player.maxWater}`;
+      statsWaterBar.style.width = `${(gameData.player.water / gameData.player.maxWater) * 100}%`;
+      
+      statsMeat.textContent = `${gameData.player.meatCount}/10`;
+      statsMeatBar.style.width = `${(gameData.player.meatCount / 10) * 100}%`;
+      
+      // 设置属性
+      statsAttack.textContent = Math.floor(getCurrentAttack());
+      statsDefense.textContent = Math.floor(getCurrentDefense());
+      statsSpeed.textContent = Math.floor(getCurrentSpeed());
+      statsExperience.textContent = gameData.player.experience;
+      
+      // 隐藏菜单
+      menuOverlay.classList.add('hidden');
+      // 显示状态覆盖层
+      statsOverlay.classList.remove('hidden');
+    }
+
+    // 切换攻击方式
+    function changeAttackType() {
+      const dinosaur = gameData.player.dinosaur;
+      const attackTypes = dinosaur.attackTypes;
+      
+      // 获取当前攻击方式的索引
+      let currentIndex = attackTypes.findIndex(attack => attack.id === gameData.gameWorld.currentAttackType);
+      if (currentIndex === -1) currentIndex = 0;
+      
+      // 切换到下一个攻击方式
+      currentIndex = (currentIndex + 1) % attackTypes.length;
+      
+      // 设置新的攻击方式
+      setAttackType(attackTypes[currentIndex].id);
+    }
+
+    // 设置攻击方式
+    function setAttackType(attackTypeId) {
+      gameData.gameWorld.currentAttackType = attackTypeId;
+      
+      // 更新UI
+      updateUI();
+      
+      // 如果在战斗中，更新战斗UI
+      if (gameData.gameWorld.battle.inProgress) {
+        updateBattleUI();
+      }
+    }
+
+    // 切换区域
+    function changeArea(areaId) {
+      // 检查是否满足区域要求
+      const area = gameData.gameWorld.areas[areaId];
+      if (area.requirement) {
+        if (area.requirement.stage && area.requirement.stage !== gameData.player.stage) {
+          alert(`你需要达到${area.requirement.stage}阶段才能进入这个区域！`);
+          return;
+        }
+        if (area.requirement.level && area.requirement.level > gameData.player.level) {
+          alert(`你需要达到${area.requirement.level}级才能进入这个区域！`);
+          return;
+        }
+      }
+      
+      // 设置当前区域
+      gameData.player.currentArea = areaId;
+      
+      // 更新游戏区域背景
+      gameArea.style.backgroundImage = `url('${area.background}')`;
+      
+      // 清除当前区域的敌人和肉
+      clearAreaElements();
+      
+      // 关闭区域选择覆盖层
+      areaSelectOverlay.classList.add('hidden');
+      
+      // 更新区域可用性
+      updateAreaAvailability();
+    }
+
+    // 清除区域元素
+    function clearAreaElements() {
+      // 清除敌人
+      gameData.gameWorld.currentEnemies.forEach(enemy => {
+        const enemyElement = document.getElementById(enemy.id);
+        if (enemyElement) {
+          enemyElement.remove();
+        }
+      });
+      gameData.gameWorld.currentEnemies = [];
+      
+      // 清除肉
+      gameData.gameWorld.droppedMeat.forEach((meat, index) => {
+        const meatElement = document.getElementById(`meat-${index}`);
+        if (meatElement) {
+          meatElement.remove();
+        }
+      });
+      gameData.gameWorld.droppedMeat = [];
+      
+      // 重置玩家位置
+      playerDinosaur.style.left = '50%';
+      playerDinosaur.style.top = '50%';
+    }
+
+    // 游戏结束
+    function gameOver() {
+      // 清除游戏循环
+      clearInterval(gameData.gameWorld.gameLoop);
+      
+      // 显示游戏结束消息
+      alert(`游戏结束！你的恐龙存活到了${gameData.player.level}级，${gameData.player.dinosaur.stageNames[gameData.player.stage]}阶段。`);
+      
+      // 重新加载游戏
+      location.reload();
+    }
+
+    // 启动游戏
+    window.addEventListener('DOMContentLoaded', initGame);
+  </script>
+</body>
+</html>
