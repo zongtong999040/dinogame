@@ -508,6 +508,14 @@
           <p class="text-center text-gray-400">战斗开始！</p>
         </div>
         
+        <!-- 攻击方式选择 -->
+        <div class="mb-4">
+          <div class="text-sm text-gray-300 mb-2">当前攻击: <span id="battle-current-attack" class="font-bold text-yellow-400">撕咬</span></div>
+          <button id="battle-change-attack" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-full shadow-lg hover:bg-blue-500 transition-all duration-300 w-full text-sm">
+            <i class="fa fa-exchange-alt mr-2"></i>切换攻击方式 (M)
+          </button>
+        </div>
+        
         <div class="space-y-3">
           <button id="battle-attack" class="btn-primary w-full flex items-center justify-center">
             <i class="fa fa-crosshairs mr-2"></i>
@@ -1058,6 +1066,14 @@
         }
       });
       
+      // 战斗中切换攻击方式
+      const battleChangeAttackBtn = document.getElementById('battle-change-attack');
+      battleChangeAttackBtn.addEventListener('click', () => {
+        if (gameData.gameWorld.battle.inProgress) {
+          changeAttackType();
+        }
+      });
+      
       // 添加气泡提醒样式
       toastNotification.style.zIndex = '2147483647';
     }
@@ -1563,9 +1579,16 @@
       battleEnemyHealth.textContent = `${Math.floor(enemy.health)}/${enemy.maxHealth}`;
       battleEnemyHealthBar.style.width = `${(enemy.health / enemy.maxHealth) * 100}%`;
       
-      // 更新攻击按钮
+      // 更新攻击方式显示
       const attackType = gameData.player.dinosaur.attackTypes.find(attack => attack.id === gameData.gameWorld.currentAttackType);
-      battleAttackName.textContent = attackType ? attackType.name : "撕咬";
+      const attackName = attackType ? attackType.name : "撕咬";
+      battleAttackName.textContent = attackName;
+      
+      // 更新战斗中的当前攻击方式显示
+      const battleCurrentAttack = document.getElementById('battle-current-attack');
+      if (battleCurrentAttack) {
+        battleCurrentAttack.textContent = attackName;
+      }
     }
 
     // 添加战斗日志
@@ -1852,6 +1875,11 @@
       
       // 更新UI
       updateUI();
+      
+      // 如果在战斗中，更新战斗UI
+      if (gameData.gameWorld.battle.inProgress) {
+        updateBattleUI();
+      }
     }
 
     // 切换区域
